@@ -1,124 +1,88 @@
-% Metódy inžinierskej práce
-
 \documentclass[10pt,twoside,slovak,a4paper]{article}
-
 \usepackage[slovak]{babel}
-%\usepackage[T1]{fontenc}
-\usepackage[IL2]{fontenc} % lepšia sadzba písmena Ľ než v T1
+\usepackage[IL2]{fontenc} 
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
-\usepackage{url} % príkaz \url na formátovanie URL
-\usepackage{hyperref} % odkazy v texte budú aktívne (pri niektorých triedach dokumentov spôsobuje posun textu)
-
+\usepackage{url} 
+\usepackage{hyperref} 
 \usepackage{cite}
-%\usepackage{times}
+\usepackage{times}
 
-\pagestyle{headings}
+\title{Modelovanie prípravného algoritmu 3D modelov pre 3D tlačiareň\thanks{Semestrálny projekt v predmete Metódy inžinierskej práce, ak. rok 2021/22, vedenie: Zuzana Špitálová}} % meno a priezvisko vyučujúceho na cvičeniach
 
-\title{Názov\thanks{Semestrálny projekt v predmete Metódy inžinierskej práce, ak. rok 2015/16, vedenie: Meno Priezvisko}} % meno a priezvisko vyučujúceho na cvičeniach
-
-\author{Meno Priezvisko\\[2pt]
+\author{Peter Farkaš\\[2pt]
 	{\small Slovenská technická univerzita v Bratislave}\\
 	{\small Fakulta informatiky a informačných technológií}\\
-	{\small \texttt{...@stuba.sk}}
+	{\small \texttt{xfarkasp@stuba.sk}}
 	}
 
-\date{\small 30. september 2015} % upravte
-
-
+\date{\small 18. október 2021} % upravte
 
 \begin{document}
 
 \maketitle
 
+\newpage
 \begin{abstract}
-\ldots
+Rozhodol som sa, že svoj článok z predmetu metódy inžinierskych prác zameriam na problematiku konverzie 3D modelu, ktoré sú najčastejšie vo formáte stereolitografického súboru (stl), na G-code súbor, ktorý je zbierkou súradníc, krokov a ostatných pracovných nastavení 3D tlačiarne, vďaka ktorým 3D tlačiareň vie vrstvu po vrstve daný model vytlačiť. Chcem sa konkrétne sústrediť na podrobné rozobratie témy, ako by sa takýto software dal vyvinúť, ako by fungoval, aké sú najčastejšie problémy pri jeho vývoji a pri jeho fungovaní. Zároveň chcem zozbierať informácie a popísať pomocou implementácie akých metód by sa dal tento systém vylepšiť tak, aby bol efektívnejší.
 \end{abstract}
 
-
-
 \section{Úvod}
+V tomto článku sa čitaťeľ najprv oboznámi so základnými pojmami ako: čo je to aditívna výroba (iank povedané 3D tlač),čo je stereolitografický súbor stl a G-code, ktoré sú nevyhnutné poznatky, aby sme sa mohli hlbšie zaoberať problematikou tohot článku. Následne mu bude vysvetlené ako funguje slicer software, ktorý zabezpečuje konverziu už spomínaných STL súborov na zbierku súradníc a ostatných nastavení 3D tlačiarne, ktoré sú zapísané v G-code, ktorý následne povie 3D tlačiarni, ako má vytlačiť žiadaný 3D objekt. Po vysvetlení týchto pojmov sa zameriame na hlavnú tému tejto práce a to je vývoj tkéhoto software-u. 
 
-Motivujte čitateľa a vysvetlite, o čom píšete. Úvod sa väčšinou nedelí na časti.
-
-Uveďte explicitne štruktúru článku. Tu je nejaký príklad.
-Základný problém, ktorý bol naznačený v úvode, je podrobnejšie vysvetlený v časti~\ref{nejaka}.
-Dôležité súvislosti sú uvedené v častiach~\ref{dolezita} a~\ref{dolezitejsia}.
-Záverečné poznámky prináša časť~\ref{zaver}.
-
-
-
-\section{Nejaká časť} \label{nejaka}
-
-Z obr.~\ref{f:rozhod} je všetko jasné. 
-
-\begin{figure*}[tbh]
-\centering
-%\includegraphics[scale=1.0]{diagram.pdf}
-Aj text môže byť prezentovaný ako obrázok. Stane sa z neho označný plávajúci objekt. Po vytvorení diagramu zrušte znak \texttt{\%} pred príkazom \verb|\includegraphics| označte tento riadok ako komentár (tiež pomocou znaku \texttt{\%}).
-\caption{Rozhodujúci argument.}
-\label{f:rozhod}
-\end{figure*}
-
-
-
-\section{Iná časť} \label{ina}
-
-Základným problémom je teda\ldots{} Najprv sa pozrieme na nejaké vysvetlenie (časť~\ref{ina:nejake}), a potom na ešte nejaké (časť~\ref{ina:nejake}).\footnote{Niekedy môžete potrebovať aj poznámku pod čiarou.}
-
-Môže sa zdať, že problém vlastne nejestvuje\cite{Coplien:MPD}, ale bolo dokázané, že to tak nie je~\cite{Czarnecki:Staged, Czarnecki:Progress}. Napriek tomu, aj dnes na webe narazíme na všelijaké pochybné názory\cite{PLP-Framework}. Dôležité veci možno \emph{zdôrazniť kurzívou}.
-
-
-\subsection{Nejaké vysvetlenie} \label{ina:nejake}
-
-Niekedy treba uviesť zoznam:
-
-\begin{itemize}
-\item jedna vec
-\item druhá vec
-	\begin{itemize}
-	\item x
-	\item y
-	\end{itemize}
-\end{itemize}
-
-Ten istý zoznam, len číslovaný:
+\section{Aditívna výroba}
+Aditívna výroba alebo v angličtine Additive manufacturing(AM), ako sa píše v článku [2] sú technológie, pomocou ktorých sú vytvárané solídne objekty priamo z 3D objektov, pomocou ukladania materiálov  po vrstve na vrstvu. 
+Najznámejšie, komerčné AM technológie sú:
 
 \begin{enumerate}
-\item jedna vec
-\item druhá vec
-	\begin{enumerate}
-	\item x
-	\item y
-	\end{enumerate}
+    \item Stereolithography (SLA) od 3D systems
+    \item Selective Laser Sintering  (SLS) od DTM Corp.
+    \item Fused  Deposition  Modeling (FDM) od Stratasys  Corp.
+    \item Solid  Ground  Curing  (SGC)  od Cubital
+    \item Laminated Object Manufacturing (LOM) od Helisys
 \end{enumerate}
 
+\section{Formáty súborov pre 3D tlač}\label{formaty}
 
-\subsection{Ešte nejaké vysvetlenie} \label{ina:este}
+\subsection{Stereolitografický súbor STL}\label{formaty:1}
+[2] STL (Stereolitografia) formát súboru je štandardný formát pri AM technológiách. Mnoho, ak nie dokonca každý 3D CAD software (soft ware na 3D modelovanie), obsahuje nástroje na STL konverziu.
+\emph{"Konverzia je vykonanie povrchového triangulačného algoritmu, ktorý sa používačasto v analýze konečných prvkov od 70. rokov 20. storočia."}
+V prípadoch, v ktorých nieje potrebné aby povrch bol vysokej kvality a tolerancia odchylky rozmerov je zanedbatelnejšia, STL formát je adekvátnym riešením.
 
-\paragraph{Veľmi dôležitá poznámka.}
-Niekedy je potrebné nadpisom označiť odsek. Text pokračuje hneď za nadpisom.
+\subsection{G-code}\label{formaty:2}
+Na základe článku [1] vieme povedať, že G-code jde textový súbor, ktorý obsahuje príkazy na prevádzkovanie CNC strojov alebo v našom prípade 3D tlačiarní. Každý G-code má svoju vlastnú, odlišnú funkciu. G-code okrem súradníc osí x,y a z zároveň obsahuje strojové (M) kódy, ktoré ovládajú jednotlivé aspekty 3D tlačiarne a F kód, ktorý ovláda rýchlosť extrudéra tlačiarne (časť, ktorá je zodpovedná za dávkovanie materiálu na tlač)
+Nasledovná tabuľka pomôže objasniť časti G-code súboru:
 
+\begin{table}[h]
+    \centering
+    \begin{tabular}{c|l}
+    \textbf{Názov premennej} & \textbf{Popis} \\
+    \hline
+        G1 & Lineárna interpolácia   \\
+        G21 & Nastavenie jednotiek dľžky na milimetre  \\
+        X & Absolútna alebo prírastková hodnota osi X  \\
+        Y & Absolútna alebo prírastková hodnota osi Y \\
+        Z & Absolútna alebo prírastková hodnota osi Z  \\
+        M101 & Zapnutie extrúderu  \\
+        M103  & Vypnutie extrúderu  \\
+        M104 S & Nastavenie teploty extrúderu  \\
+        F & Nastavenie rýchlosti extrúderu  \\
+    \end{tabular}
+    \caption{G-code}
+    \label{tab:my_label}
+\end{table}
 
+\section{Slicer}
 
-\section{Dôležitá časť} \label{dolezita}
+\section{Vývoj slicer softwareu}
 
-
-
-
-\section{Ešte dôležitejšia časť} \label{dolezitejsia}
-
-
-
-
-\section{Záver} \label{zaver} % prípadne iný variant názvu
-
-
-
-%\acknowledgement{Ak niekomu chcete poďakovať\ldots}
-
+\section{Záver}
+%\includegraphics[scale=.6]{Diagram1.png}
 
 % týmto sa generuje zoznam literatúry z obsahu súboru literatura.bib podľa toho, na čo sa v článku odkazujete
-\bibliography{literatura}
+
+\bibliography{literatura.bib}
 \bibliographystyle{plain} % prípadne alpha, abbrv alebo hociktorý iný
+\cite{1}
+\cite{2}
 \end{document}
