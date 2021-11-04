@@ -1,39 +1,37 @@
 \documentclass[10pt,twoside,slovak,a4paper]{article}
 \usepackage[slovak]{babel}
-\usepackage[IL2]{fontenc} 
+\usepackage[IL2]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage[unicode]{hyperref}
 \usepackage{graphicx}
 \usepackage{url} 
 \usepackage{hyperref} 
 \usepackage{cite}
 \usepackage{times}
 
-\title{Modelovanie prípravného algoritmu 3D modelov pre 3D tlačiareň\thanks{Semestrálny projekt v predmete Metódy inžinierskej práce, ak. rok 2021/22, vedenie: Zuzana Špitálová}} % meno a priezvisko vyučujúceho na cvičeniach
+\title{Modelovanie prípravného algoritmu 3D modelov pre 3D tlačiareň\thanks{Semestrálny projekt v predmete Metódy inžinierskej práce, ak. rok 2021/22, vedenie: Zuzana Špitálová}}
 
 \author{Peter Farkaš\\[2pt]
 	{\small Slovenská technická univerzita v Bratislave}\\
 	{\small Fakulta informatiky a informačných technológií}\\
 	{\small \texttt{xfarkasp@stuba.sk}}
 	}
-
-\date{\small 18. október 2021} % upravte
-
+\date{\small 18. október 2021} 
 \begin{document}
 
 \maketitle
 
-\newpage
 \begin{abstract}
-Tento článok z predmetu metódy inžinierskych prác je zameraný na problematiku konverzie 3D modelu, ktoré sú najčastejšie vo formáte stereolitografického súboru (stl), na G-code súbor, ktorý je zbierkou súradníc, krokov a ostatných pracovných nastavení 3D tlačiarne, vďaka ktorým 3D tlačiareň vie vrstvu po vrstve daný model vytlačiť. Chcem sa konkrétne sústrediť na podrobné rozobratie témy, ako by sa takýto software dal vyvinúť, ako by fungoval, aké sú najčastejšie problémy pri jeho vývoji a pri jeho fungovaní. Zároveň chcem zozbierať informácie a popísať pomocou implementácie akých metód by sa dal tento systém vylepšiť tak, aby bol efektívnejší.
+    Tento článok z predmetu metódy inžinierskych prác je zameraný na problematiku konverzie 3D modelu, ktoré sú najčastejšie vo formáte stereolitografického súboru (stl), na G-code súbor, ktorý je zbierkou súradníc, krokov a ostatných pracovných nastavení 3D tlačiarne, vďaka ktorým 3D tlačiareň vie vrstvu po vrstve daný model vytlačiť. Chcem sa konkrétne sústrediť na podrobné rozobratie témy, ako by sa takýto slicer software dal vyvinúť, ako by fungoval, aké sú najčastejšie problémy pri jeho vývoji a pri jeho fungovaní. Zároveň chcem zozbierať informácie a popísať pomocou implementácie akých metód by sa dal tento systém vylepšiť tak, aby bol efektívnejší.
 \end{abstract}
 
 \section{Úvod}
-V tomto článku sa čitaťeľ najprv oboznámi so základnými pojmami ako: čo je to aditívna výroba (iank povedané 3D tlač),čo je stereolitografický súbor stl a G-code, ktoré sú nevyhnutné poznatky, aby sme sa mohli hlbšie zaoberať problematikou tohot článku. Následne mu bude vysvetlené ako funguje slicer software, ktorý zabezpečuje konverziu už spomínaných STL súborov na zbierku súradníc a ostatných nastavení 3D tlačiarne, ktoré sú zapísané v G-code, ktorý následne povie 3D tlačiarni, ako má vytlačiť žiadaný 3D objekt. Po vysvetlení týchto pojmov sa zameriame na hlavnú tému tejto práce a to je vývoj tkéhoto software-u. 
+    Čitateľ sa najprv v článku oboznámi so základnými pojmami ako, čo je to aditívna výroba (inak povedané 3D tlač Kapitola: \ref{AM}), čo je stereolitografický súbor stl (Kapitola: \ref{formaty:STL}) a G-code (Kapitola: \ref{formaty:G-code}), ktoré sú nevyhnutné poznatky, aby sme sa mohli hlbšie zaoberať problematikou tohto článku. Následne mu bude vysvetlené, ako funguje slicer software (Kapitola: \ref{Slicer}), ktorý zabezpečuje konverziu už spomínaných STL súborov na zbierku súradníc a ostatných nastavení 3D tlačiarne, ktoré sú zapísané v G-code, ktorý následne povie 3D tlačiarni, ako má vytlačiť žiadaný 3D objekt. Po vysvetlení týchto pojmov sa zameriame na hlavnú tému tejto práce, a to je vývoj takéhoto software-u (Kapitola:\ref{Slicer_vyvoj}). 
 
-\section{Aditívna výroba}
-Aditívna výroba alebo v angličtine Additive manufacturing(AM), ako sa píše v článku \cite{2} sú technológie, pomocou ktorých sú vytvárané solídne objekty priamo z 3D objektov, pomocou ukladania materiálov  po vrstve na vrstvu. 
-Najznámejšie, komerčné AM technológie sú:
-
+\section{Aditívna výroba}\label{AM}
+    Aditívna výroba alebo v angličtine Additive manufacturing(AM), ako sa píše v článku \cite{inproceedings} sú technológie, pomocou ktorých sú vytvárané solídne objekty priamo z 3D objektov, pomocou ukladania materiálov  po vrstve na vrstvu. 
+    Najznámejšie, komerčné AM technológie sú:
+\newpage
 \begin{enumerate}
     \item Stereolithography (SLA) od 3D systems
     \item Selective Laser Sintering  (SLS) od DTM Corp.
@@ -41,50 +39,62 @@ Najznámejšie, komerčné AM technológie sú:
     \item Solid  Ground  Curing  (SGC)  od Cubital
     \item Laminated Object Manufacturing (LOM) od Helisys
 \end{enumerate}
+    \cite{6757836} AM proces sa skladá z troch častí: Prvá časť je vytvorenie konkrétneho 3D objektu, modelu v modelovacom software, ako je napríklad Fusion360 alebo Blender. Druhá časť je vloženie modelu do slicer software-u a jeho príprava na tlač do formátu G-code. Posledný krok je už priama fabrikácia modelu na 3D tlačiarni alebo inom AM stroji.
 
 \section{Formáty súborov pre 3D tlač}
-Aby sme sa mohli posunúť hlbšie do rozobratia nastolenej problematiky, ktorou sa zaoberá tento článok, nevyhnutne musíme oboznámiť čitateľa so súborovými formátmi, ktorými slicer softwarey a 3D tlačiarne pracujú. Konkrétne sa jedná o Stereolitografické súbory (STL) z ktorých následne slicer software vytvorí G-code, ktorý obsahúje zbierku príkazov, súradníc a strojových nastavení.
-\subsection{Stereolitografický súbor STL}\label{formaty:1}
-\cite{2} STL (Stereolitografia) formát súboru je štandardný formát pri AM technológiách. Mnoho, ak nie dokonca každý 3D CAD software (soft ware na 3D modelovanie), obsahuje nástroje na STL konverziu.
-\emph{"Konverzia je vykonanie povrchového triangulačného algoritmu, ktorý sa používačasto v analýze konečných prvkov od 70. rokov 20. storočia."}
-V prípadoch, v ktorých nieje potrebné aby povrch bol vysokej kvality a tolerancia odchylky rozmerov je zanedbatelnejšia, STL formát je adekvátnym riešením.
+    Aby sme sa mohli posunúť hlbšie do rozobratia nastolenej problematiky, ktorou sa zaoberá tento článok, nevyhnutne musíme oboznámiť čitateľa so súborovými formátmi, ktorými slicer softwarey a 3D tlačiarne pracujú. Konkrétne sa jedná o Stereolitografické súbory (STL), z ktorých následne slicer software vytvorí G-code, ktorý obsahuje zbierku príkazov, súradníc a strojových nastavení.
 
-\subsection{G-code}\label{formaty:2}
-Na základe článku \cite{1} vieme povedať, že G-code jde textový súbor, ktorý obsahuje príkazy na prevádzkovanie CNC strojov alebo v našom prípade 3D tlačiarní. Každý G-code má svoju vlastnú, odlišnú funkciu. G-code okrem súradníc osí x,y a z zároveň obsahuje strojové (M) kódy, ktoré ovládajú jednotlivé aspekty 3D tlačiarne a F kód, ktorý ovláda rýchlosť extrudéra tlačiarne (časť, ktorá je zodpovedná za dávkovanie materiálu na tlač)
-Nasledovná tabuľka pomôže objasniť časti G-code súboru:
+\subsection{Stereolitografický súbor STL}\label{formaty:STL}
+    \cite{6757836} \emph{"Súbor STL je mozaikový (triangulovaný) povrchový model. STL je synonymom pre mozaikový štandardný trojuholníkový jazykový model."}
+    \cite{inproceedings} STL (Stereolitografia) formát súboru je štandardný formát pri AM technológiách. Mnoho, ak nie dokonca každý 3D CAD software (software na 3D modelovanie), obsahuje nástroje na STL konverziu.
+    \emph{"Konverzia je vykonanie povrchového triangulačného algoritmu, ktorý sa používa často v analýze konečných prvkov od 70. rokov 20. storočia."}
+    V prípadoch, v ktorých nieje potrebné, aby povrch bol vysokej kvality a tolerancia odchýlky rozmerov je zanedbateľnejšia, STL formát je adekvátnym riešením.
 
-\begin{table}[h]
-    \centering
-    \begin{tabular}{c|l}
-    \textbf{Názov premennej} & \textbf{Popis} \\
-    \hline
-        G1 & Lineárna interpolácia   \\
-        G21 & Nastavenie jednotiek dľžky na milimetre  \\
-        X & Absolútna alebo prírastková hodnota osi X  \\
-        Y & Absolútna alebo prírastková hodnota osi Y \\
-        Z & Absolútna alebo prírastková hodnota osi Z  \\
-        M101 & Zapnutie extrúderu  \\
-        M103  & Vypnutie extrúderu  \\
-        M104 S & Nastavenie teploty extrúderu  \\
-        F & Nastavenie rýchlosti extrúderu  \\
-    \end{tabular}
-    \caption{G-code}
-    \label{tab:my_label}
-\end{table}
+\subsection{G-code}\label{formaty:G-code}
+    Na základe článku \cite{6757836} vieme povedať, že G-code je textový súbor, ktorý obsahuje príkazy na prevádzkovanie CNC strojov alebo v našom prípade 3D tlačiarní. Každý G-code má svoju vlastnú, odlišnú funkciu. G-code okrem súradníc osí x, y a z zároveň obsahuje strojové (M) kódy, ktoré ovládajú jednotlivé aspekty 3D tlačiarne a F kód, ktorý ovláda rýchlosť extrudéra tlačiarne (časť, ktorá je zodpovedná za dávkovanie materiálu na tlač)
+    Nasledovná tabuľka pomôže objasniť časti G-code súboru:
+    \begin{table}[h]
+        \centering
+        \begin{tabular}{c|l}
+        \textbf{Názov premennej} & \textbf{Popis} \\
+        \hline
+            G1 & Lineárna interpolácia   \\
+            G21 & Nastavenie jednotiek dĺžky na milimetre  \\
+            X & Absolútna alebo prírastková hodnota osi X  \\
+            Y & Absolútna alebo prírastková hodnota osi Y \\
+            Z & Absolútna alebo prírastková hodnota osi Z  \\
+            M101 & Zapnutie extrúderu  \\
+            M103  & Vypnutie extrúderu  \\
+            M104 S & Nastavenie teploty extrúderu  \\
+            F & Nastavenie rýchlosti extrúderu  \\
+        \end{tabular}
+        \caption{G-code}
+        \label{tab:my_label}
+    \end{table}
+\newpage
+\section{Slicer software} \label{Slicer}
+    Pojem slicer je najlepšie vysvetlený v článku \cite{SONG2018276}, ktorý o ňom píše nasledovne:
+    \newline
+    \emph{"Slicer je typ softvéru na 3D tlač, ktorý prevádza digitálne 3D modely na pokyny na tlač, aby mohla 3D tlačiareň vytvoriť objekt. Slicer rozreže model CAD na horizontálne vrstvy na základe nastavení, ktoré si používateľ vyberie a vypočíta, koľko materiálu bude musieť 3D tlačiareň vytlačiť a ako dlho to bude trvať. Všetky tieto informácie sú potom spojené do súboru s G-kódom (kapitola: \ref{formaty:G-code}), ktorý je odoslaný do 3D tlačiarne."}
 
-\section{Slicer}
-Pojem slicer je najlepšie vysvetlený v článku \cite{3}, ktorý o ňom píše nasledovne:
+\section{Softwareové modelovanie algoritmu na generovanie G-codeu zo stereografického súboru STL}\label{Slicer_vyvoj}
+   Teraz, keď už máme vysvetlené základné pojmy danej problematiky sa môžeme hlbšie zamerať komplexnejšou témou a ním je vývoj takého algoritmu, ktorý bude schopný zo Stereolitografického súboru STL (vysvetlené v kapitole: \ref{formaty:STL}) vygenerovať súbor obsahujúce príkazy pre AM stroje zvaný G-code.
 \newline
-\emph{"Slicer je typ softvéru na 3D tlač, ktorý prevádza digitálne 3D modely na pokyny na tlač, aby mohla 3D tlačiareň vytvoriť objekt. Slicer rozreže model CAD na horizontálne vrstvy na základe nastavení, ktoré si používateľ vyberie, a vypočíta, koľko materiálu bude musieť 3D tlačiareň vytlačiť a ako dlho to bude trvať. Všetky tieto informácie sú potom spojené do súboru s G-kódom, ktorý je odoslaný do 3D tlačiarne."}
+    V tejto kapitole budem referovať článok \cite{6757836}, ktorý sa práve zaoberá s vývojom takéhoto algoritmu.
+\subsection{Slicing algoritmus}\label{Slicer_vyvoj:Slicing}
+    Je dôležité poznamenať, že výskum pána Andrew C. Browna a pána Deon de Beer, autorov článku \cite{6757836}, stojí na hypotéze, že v STL súbore sa nenachádzajú žiadne geometrické chyby.
+     \newline Prvý krok algoritmu je jeho schopnosť prečítať jeden alebo viacero súborov vo formáte STL. Keďže STL model je tvorený z rozličných faziet, preto používa orientáciu fazetu na určenie, ktorá strana fazetu reprezentuje vnútornú časť 3D objektu, ktorý sa má vyhotoviť a ktorá strana zase susedí s prázdnym priestorom. Práve tento koncept diktovania poradia vertexov (vrcholov) sa využíva v tomto algoritme.
+\subsubsection{Objavenie priesečníka fazety}
 
-\section{Vývoj slicer softwareu}
+\subsubsection{Generovanie polygónov}
 
+\subsubsection{Generovanie raftu}
+Raft je označenie medzivrstvy medzi tlačeným 3D objektom a podložkou tlačiarne.
+\subsubsection{Generovanie G-codeu}
+
+\subsection{Testovanie}\label{Slicer_vyvoj:Testovanie}
 \section{Záver}
-%\includegraphics[scale=.6]{Diagram1.png}
-
-% týmto sa generuje zoznam literatúry z obsahu súboru literatura.bib podľa toho, na čo sa v článku odkazujete
-
+    V tomto článku boli čitateľovi vysvetlené základné pojmy v oblasti 3D tlače. Potom, čo sa s nimi čitateľ oboznámil sme mu mohli hlbšie predložiť, čo sa odohráva v pozadí 3D sliceru a zároveň sa mohol dozvedieť, ako sa STL slicing software a algoritmus na generovanie G-codeu vyvíja. Článok hovorí aj o efektívnosti takéhoto algoritmu vykonaním mnohých testov formou tlače vytvorených G-codeov na 3D tlačiarni (autori článku \cite{6757836} tieto testy vykonávali na 3D tlačiarni BFB 3000) 
 \bibliography{literatura.bib}
-\bibliographystyle{plain} % prípadne alpha, abbrv alebo hociktorý iný
-
+\bibliographystyle{plain} 
 \end{document}
